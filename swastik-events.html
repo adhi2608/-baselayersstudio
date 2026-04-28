@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Swastik Event & Decorator</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Cinzel:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--gold:#C9A84C;--gold-light:#E8C96D;--gold-dark:#A07828;--crimson:#7A1020;--crimson-dark:#560B16;--cream:#F5EFE6;--cream-dark:#EDE3D4;--dark:#1A0A0E;--text:#3A2010;--text-light:#7A5A3A;--wa:#25D366;}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{font-family:'Lato',sans-serif;background:var(--cream);color:var(--text);overflow-x:hidden;}
+
+/* LOADER */
+#loader{position:fixed;inset:0;z-index:99999;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.9s ease,visibility 0.9s ease;}
+#loader.hide{opacity:0;visibility:hidden;pointer-events:none;}
+.lc-l,.lc-r{position:absolute;top:0;bottom:0;width:50%;background:var(--dark);transition:transform 1.1s cubic-bezier(.77,0,.175,1) 0.5s;z-index:2;}
+.lc-l{left:0;}.lc-r{right:0;}
+#loader.hide .lc-l{transform:translateX(-100%);}#loader.hide .lc-r{transform:translateX(100%);}
+.loader-inner{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;gap:20px;}
+.loader-logo{width:130px;height:130px;object-fit:contain;filter:drop-shadow(0 0 40px rgba(201,168,76,0.6));animation:lPulse 1.8s ease-in-out infinite;}
+.loader-brand{font-family:'Cinzel',serif;font-size:2.2rem;font-weight:700;color:var(--gold);letter-spacing:8px;opacity:0;animation:fadeUp 0.8s ease 0.5s both;}
+.loader-sub{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:7px;color:rgba(245,239,230,0.45);text-transform:uppercase;opacity:0;animation:fadeUp 0.8s ease 0.8s both;}
+.loader-bar-wrap{width:220px;height:2px;background:rgba(201,168,76,0.15);border-radius:2px;overflow:hidden;margin-top:6px;opacity:0;animation:fadeUp 0.6s ease 1.1s both;}
+.loader-bar{height:100%;width:0;background:linear-gradient(90deg,var(--gold-dark),var(--gold-light));animation:lBar 1.8s ease 1.3s both;}
+.lparticles{position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none;}
+.lp{position:absolute;width:2px;height:2px;border-radius:50%;background:var(--gold);opacity:0;animation:lpFloat var(--dur,4s) ease-in-out var(--delay,0s) infinite;}
+@keyframes lPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
+@keyframes lBar{0%{width:0;}100%{width:100%;}}
+@keyframes lpFloat{0%{transform:translateY(100vh) translateX(var(--x,0));opacity:0;}10%{opacity:0.5;}90%{opacity:0.2;}100%{transform:translateY(-30px) translateX(var(--x,0));opacity:0;}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+
+/* NAV */
+nav{position:fixed;top:0;width:100%;z-index:1000;background:rgba(26,10,14,0.97);backdrop-filter:blur(14px);border-bottom:1px solid rgba(201,168,76,0.3);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px;}
+.nav-logo{display:flex;align-items:center;gap:14px;}
+.nav-logo img{height:48px;width:48px;object-fit:contain;border-radius:50%;}
+.nav-logo-text{font-family:'Cinzel',serif;font-size:1.1rem;font-weight:600;color:var(--gold);letter-spacing:2px;line-height:1.2;}
+.nav-logo-text span{display:block;font-size:0.55rem;font-weight:400;letter-spacing:4px;color:var(--gold-light);opacity:0.8;}
+.nav-links{display:flex;gap:28px;list-style:none;align-items:center;}
+.nav-links a{font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:2.5px;font-weight:500;color:rgba(245,239,230,0.8);text-decoration:none;transition:color 0.3s;text-transform:uppercase;}
+.nav-links a:hover{color:var(--gold-light);}
+.nav-cta{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:var(--dark)!important;padding:9px 22px!important;border-radius:2px;font-weight:700!important;}
+.nav-wa{display:flex;align-items:center;gap:7px;background:#128C7E;color:#fff!important;padding:9px 16px!important;border-radius:20px;font-size:0.67rem!important;letter-spacing:1.5px!important;transition:background 0.3s!important;}
+.nav-wa:hover{background:var(--wa)!important;}
+.nav-wa svg{width:15px;height:15px;fill:#fff;flex-shrink:0;}
+
+/* HERO */
+.hero{min-height:100vh;background:var(--dark);position:relative;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;}
+.hero-bg{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800&q=80');background-size:cover;background-position:center;opacity:0.18;}
+.hero-overlay{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,var(--dark) 80%);}
+.hero-pattern{position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,rgba(201,168,76,0.03) 0,rgba(201,168,76,0.03) 1px,transparent 0,transparent 50%);background-size:40px 40px;}
+.hero-content{position:relative;z-index:2;max-width:860px;padding:120px 40px 60px;}
+.hero-badge{display:inline-block;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:5px;font-weight:500;color:var(--gold);border:1px solid rgba(201,168,76,0.4);padding:8px 24px;margin-bottom:40px;text-transform:uppercase;}
+.hero-logo{width:160px;height:160px;object-fit:contain;margin-bottom:36px;filter:drop-shadow(0 0 40px rgba(201,168,76,0.4));animation:float 6s ease-in-out infinite;}
+.hero h1{font-family:'Cinzel',serif;font-size:clamp(3rem,7vw,6rem);font-weight:700;color:var(--gold);line-height:1;letter-spacing:4px;margin-bottom:8px;text-shadow:0 0 60px rgba(201,168,76,0.3);}
+.hero-sub{font-family:'Cinzel',serif;font-size:0.8rem;letter-spacing:8px;color:rgba(245,239,230,0.6);margin-bottom:28px;text-transform:uppercase;}
+.hero-divider{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:32px;}
+.hero-divider::before,.hero-divider::after{content:'';flex:1;max-width:120px;height:1px;background:linear-gradient(90deg,transparent,var(--gold));}
+.hero-divider::after{background:linear-gradient(90deg,var(--gold),transparent);}
+.hero-divider span{color:var(--gold);font-size:1.4rem;}
+.hero p{font-family:'Cormorant Garamond',serif;font-size:1.35rem;font-style:italic;color:rgba(245,239,230,0.75);line-height:1.7;margin-bottom:52px;}
+.hero-btns{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;}
+.btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:var(--dark);padding:16px 44px;font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:3px;font-weight:700;border:none;cursor:pointer;text-decoration:none;display:inline-block;text-transform:uppercase;transition:all 0.3s;box-shadow:0 8px 32px rgba(201,168,76,0.35);}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(201,168,76,0.5);}
+.btn-outline{border:1px solid rgba(201,168,76,0.6);color:var(--gold);padding:16px 44px;font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:3px;font-weight:500;text-decoration:none;display:inline-block;text-transform:uppercase;transition:all 0.3s;}
+.btn-outline:hover{background:rgba(201,168,76,0.1);}
+.hero-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;color:rgba(245,239,230,0.4);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:3px;animation:bounce 2s ease-in-out infinite;}
+.scroll-line{width:1px;height:50px;background:linear-gradient(to bottom,rgba(201,168,76,0.6),transparent);}
+
+/* STATS */
+.stats{background:linear-gradient(135deg,var(--crimson-dark),var(--crimson));padding:60px 40px;display:grid;grid-template-columns:repeat(4,1fr);position:relative;overflow:hidden;}
+.stats::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(201,168,76,0.05) 0,rgba(201,168,76,0.05) 1px,transparent 0,transparent 200px);}
+.stat{text-align:center;padding:28px 20px;border-right:1px solid rgba(201,168,76,0.2);}
+.stat:last-child{border-right:none;}
+.stat-num{font-family:'Cinzel',serif;font-size:3rem;font-weight:700;color:var(--gold);line-height:1;display:block;margin-bottom:8px;}
+.stat-label{font-family:'Lato',sans-serif;font-size:0.75rem;letter-spacing:3px;color:rgba(245,239,230,0.7);text-transform:uppercase;}
+
+/* SECTION HEADER */
+.section-header{text-align:center;margin-bottom:72px;}
+.section-tag{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:5px;font-weight:500;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:16px;}
+.section-title{font-family:'Cinzel',serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:700;color:var(--crimson);line-height:1.2;margin-bottom:20px;}
+.section-line{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px;}
+.section-line::before,.section-line::after{content:'';width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--gold));}
+.section-line::after{background:linear-gradient(90deg,var(--gold),transparent);}
+.section-line span{color:var(--gold);font-size:1.2rem;}
+.section-desc{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:var(--text-light);max-width:580px;margin:0 auto;line-height:1.8;}
+
+/* SERVICES */
+.services{padding:120px 60px;background:var(--cream);}
+.services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;max-width:1200px;margin:0 auto;}
+.service-card{position:relative;overflow:hidden;border-radius:4px;box-shadow:0 4px 32px rgba(58,32,16,0.12);transition:transform 0.4s,box-shadow 0.4s;cursor:pointer;}
+.service-card:hover{transform:translateY(-8px);box-shadow:0 16px 60px rgba(58,32,16,0.22);}
+.service-img{width:100%;height:280px;object-fit:cover;display:block;transition:transform 0.6s;}
+.service-card:hover .service-img{transform:scale(1.06);}
+.service-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(26,10,14,0.92) 0%,rgba(26,10,14,0.3) 50%,transparent 100%);}
+.service-content{position:absolute;bottom:0;left:0;right:0;padding:28px;}
+.service-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--gold),var(--gold-dark));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:12px;}
+.service-title{font-family:'Cinzel',serif;font-size:1.1rem;font-weight:600;color:#fff;margin-bottom:8px;}
+.service-desc{font-family:'Cormorant Garamond',serif;font-size:0.95rem;color:rgba(245,239,230,0.75);line-height:1.6;}
+.service-tag{display:inline-block;margin-top:12px;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:3px;color:var(--gold);border:1px solid rgba(201,168,76,0.5);padding:4px 12px;text-transform:uppercase;}
+
+/* GALLERY */
+.events{padding:120px 60px;background:linear-gradient(180deg,var(--cream-dark) 0%,var(--cream) 100%);}
+.events-masonry{max-width:1200px;margin:0 auto;columns:3;column-gap:24px;}
+.event-item{break-inside:avoid;margin-bottom:24px;position:relative;overflow:hidden;border-radius:4px;cursor:pointer;box-shadow:0 4px 20px rgba(58,32,16,0.1);}
+.event-item img{width:100%;display:block;transition:transform 0.6s;}
+.event-item:hover img{transform:scale(1.05);}
+.event-item-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(122,16,32,0.85) 0%,transparent 60%);opacity:0;transition:opacity 0.4s;display:flex;align-items:flex-end;padding:24px;}
+.event-item:hover .event-item-overlay{opacity:1;}
+.event-item-label{font-family:'Cinzel',serif;font-size:0.9rem;font-weight:600;color:#fff;letter-spacing:1px;}
+
+/* WHY US */
+.why-us{padding:120px 60px;background:var(--dark);position:relative;overflow:hidden;}
+.why-us-bg{position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1507504031003-b417219a0fde?w=1800&q=80');background-size:cover;background-position:center;opacity:0.07;}
+.why-us .section-title{color:var(--gold-light);}
+.why-us .section-desc{color:rgba(245,239,230,0.6);}
+.why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px;max-width:1200px;margin:0 auto;}
+.why-card{text-align:center;padding:40px 24px;border:1px solid rgba(201,168,76,0.2);transition:border-color 0.3s,background 0.3s;position:relative;}
+.why-card:hover{border-color:rgba(201,168,76,0.6);background:rgba(201,168,76,0.04);}
+.why-num{font-family:'Cinzel',serif;font-size:3.5rem;font-weight:700;color:rgba(201,168,76,0.15);position:absolute;top:16px;right:20px;line-height:1;}
+.why-icon{font-size:2.4rem;margin-bottom:20px;}
+.why-title{font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:var(--gold);margin-bottom:12px;letter-spacing:1px;}
+.why-desc{font-family:'Cormorant Garamond',serif;font-size:1rem;color:rgba(245,239,230,0.6);line-height:1.7;}
+
+/* TESTIMONIALS */
+.testimonials{padding:120px 60px;background:var(--cream);}
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;max-width:1200px;margin:0 auto;}
+.testi-card{background:#fff;padding:44px 36px;border-top:3px solid var(--gold);box-shadow:0 4px 24px rgba(58,32,16,0.08);}
+.testi-quote{font-size:5rem;color:rgba(201,168,76,0.15);font-family:'Cormorant Garamond',serif;line-height:0.6;margin-bottom:20px;display:block;}
+.testi-text{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-style:italic;color:var(--text);line-height:1.8;margin-bottom:28px;}
+.testi-stars{color:var(--gold);font-size:0.9rem;margin-bottom:16px;}
+.testi-author{display:flex;align-items:center;gap:14px;}
+.testi-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--crimson),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;color:#fff;font-size:1rem;}
+.testi-name{font-family:'Cinzel',serif;font-size:0.85rem;font-weight:600;color:var(--crimson);letter-spacing:1px;}
+.testi-event{font-size:0.75rem;color:var(--text-light);margin-top:2px;}
+
+/* CONTACT */
+.contact{padding:120px 60px;background:linear-gradient(135deg,var(--crimson-dark) 0%,var(--crimson) 50%,#9A1525 100%);position:relative;overflow:hidden;}
+.contact::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(201,168,76,0.04) 0,rgba(201,168,76,0.04) 1px,transparent 0,transparent 60px);}
+.contact .section-title{color:#fff;}
+.contact .section-desc{color:rgba(255,255,255,0.7);}
+.contact-inner{max-width:1100px;margin:0 auto;position:relative;display:grid;grid-template-columns:1fr 1fr;gap:80px;}
+.contact-info h3{font-family:'Cinzel',serif;font-size:1.4rem;color:var(--gold);margin-bottom:32px;letter-spacing:1px;}
+.contact-item{display:flex;align-items:flex-start;gap:16px;margin-bottom:26px;}
+.ci-icon{width:48px;height:48px;flex-shrink:0;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
+.ci-text p{font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:5px;}
+.ci-text span,.ci-text a{font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:rgba(255,255,255,0.85);text-decoration:none;display:block;line-height:1.6;}
+.ci-text a:hover{color:var(--gold-light);}
+.contact-form{display:flex;flex-direction:column;gap:16px;}
+.form-field{background:rgba(255,255,255,0.07);border:1px solid rgba(201,168,76,0.25);padding:13px 18px;color:#fff;font-family:'Lato',sans-serif;font-size:0.88rem;outline:none;border-radius:2px;transition:border-color 0.3s;width:100%;}
+.form-field::placeholder{color:rgba(255,255,255,0.35);}
+.form-field:focus{border-color:var(--gold);}
+select.form-field option{background:var(--crimson-dark);}
+textarea.form-field{resize:vertical;min-height:100px;}
+.form-submit{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:var(--dark);padding:15px;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:3px;font-weight:700;border:none;cursor:pointer;text-transform:uppercase;transition:all 0.3s;}
+.form-submit:hover{opacity:0.9;transform:translateY(-2px);}
+
+/* FOOTER */
+footer{background:var(--dark);border-top:1px solid rgba(201,168,76,0.2);padding:60px 60px 36px;}
+.footer-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:60px;margin-bottom:48px;}
+.footer-brand img{height:70px;object-fit:contain;margin-bottom:20px;}
+.footer-brand p{font-family:'Cormorant Garamond',serif;font-size:1rem;color:rgba(245,239,230,0.5);line-height:1.8;margin-bottom:28px;}
+.footer-socials{display:flex;gap:12px;flex-wrap:wrap;}
+.social-btn{width:38px;height:38px;border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;color:var(--gold);transition:all 0.3s;cursor:pointer;border-radius:50%;text-decoration:none;}
+.social-btn:hover{background:rgba(201,168,76,0.15);border-color:var(--gold);}
+.social-btn svg{width:17px;height:17px;fill:currentColor;}
+.wa-social{color:#25D366!important;border-color:rgba(37,211,102,0.3)!important;}
+.footer-col h4{font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:3px;font-weight:600;color:var(--gold);margin-bottom:22px;text-transform:uppercase;}
+.footer-col ul{list-style:none;}
+.footer-col li{margin-bottom:11px;font-family:'Lato',sans-serif;font-size:0.84rem;color:rgba(245,239,230,0.5);transition:color 0.3s;cursor:default;}
+.footer-col li:hover{color:var(--gold-light);}
+.footer-bottom{border-top:1px solid rgba(201,168,76,0.1);padding-top:28px;display:flex;align-items:center;justify-content:space-between;}
+.footer-bottom p{font-family:'Lato',sans-serif;font-size:0.75rem;color:rgba(245,239,230,0.3);}
+.footer-bottom-logo{font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:3px;color:var(--gold);opacity:0.6;}
+
+/* WHATSAPP FLOAT */
+.wa-float{position:fixed;bottom:106px;right:28px;z-index:9000;display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.wa-float-btn{width:56px;height:56px;border-radius:50%;background:var(--wa);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,0.45);text-decoration:none;animation:waPulse 2.5s ease-in-out infinite;transition:transform 0.2s;}
+.wa-float-btn:hover{transform:scale(1.1);}
+.wa-float-btn svg{width:28px;height:28px;fill:#fff;}
+.wa-tip{background:rgba(26,10,14,0.92);color:#fff;font-family:'Cinzel',serif;font-size:0.63rem;letter-spacing:1.5px;padding:5px 13px;border-radius:20px;border:1px solid rgba(37,211,102,0.4);white-space:nowrap;opacity:0;transform:translateX(8px);transition:all 0.3s;pointer-events:none;}
+.wa-float:hover .wa-tip{opacity:1;transform:translateX(0);}
+@keyframes waPulse{0%,100%{box-shadow:0 4px 20px rgba(37,211,102,0.45);}50%{box-shadow:0 4px 40px rgba(37,211,102,0.7),0 0 0 8px rgba(37,211,102,0.08);}}
+
+/* AI CHAT */
+.ai-float{position:fixed;bottom:28px;right:28px;z-index:9000;display:flex;flex-direction:column;align-items:flex-end;gap:12px;}
+.ai-toggle{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--crimson),var(--gold-dark));border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 24px rgba(201,168,76,0.4);font-size:1.4rem;transition:transform 0.3s,box-shadow 0.3s;}
+.ai-toggle:hover{transform:scale(1.08);box-shadow:0 6px 32px rgba(201,168,76,0.6);}
+.ai-panel{width:340px;background:var(--dark);border:1px solid rgba(201,168,76,0.3);border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.55);display:none;flex-direction:column;max-height:490px;}
+.ai-panel.open{display:flex;}
+.ai-head{background:linear-gradient(135deg,var(--crimson-dark),var(--crimson));padding:15px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(201,168,76,0.15);}
+.ai-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--gold-dark),var(--gold-light));display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.ai-ht h4{font-family:'Cinzel',serif;font-size:0.8rem;color:var(--gold);letter-spacing:1px;}
+.ai-ht p{font-size:0.68rem;color:rgba(245,239,230,0.5);margin-top:2px;}
+.ai-dot{width:8px;height:8px;border-radius:50%;background:#4CAF50;margin-left:auto;flex-shrink:0;box-shadow:0 0 6px #4CAF50;}
+.ai-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:rgba(201,168,76,0.2) transparent;}
+.ai-m{max-width:86%;padding:10px 13px;border-radius:10px;font-family:'Lato',sans-serif;font-size:0.81rem;line-height:1.55;white-space:pre-wrap;}
+.ai-m.bot{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.12);color:rgba(245,239,230,0.85);align-self:flex-start;border-bottom-left-radius:2px;}
+.ai-m.usr{background:linear-gradient(135deg,var(--crimson-dark),var(--crimson));color:#fff;align-self:flex-end;border-bottom-right-radius:2px;}
+.ai-typing-d{display:flex;gap:4px;align-items:center;padding:9px 13px;background:rgba(201,168,76,0.07);border-radius:10px;border-bottom-left-radius:2px;align-self:flex-start;border:1px solid rgba(201,168,76,0.08);}
+.ai-typing-d span{width:5px;height:5px;border-radius:50%;background:var(--gold);opacity:0.4;animation:td 1.2s ease-in-out infinite;}
+.ai-typing-d span:nth-child(2){animation-delay:.2s;}
+.ai-typing-d span:nth-child(3){animation-delay:.4s;}
+@keyframes td{0%,100%{opacity:0.3;transform:scale(1);}50%{opacity:1;transform:scale(1.3);}}
+.ai-qbtns{padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid rgba(201,168,76,0.08);}
+.ai-q{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.22);color:var(--gold-light);font-size:0.66rem;padding:5px 10px;border-radius:14px;cursor:pointer;font-family:'Lato',sans-serif;transition:all 0.2s;white-space:nowrap;}
+.ai-q:hover{background:rgba(201,168,76,0.18);}
+.ai-inp-row{display:flex;gap:8px;padding:11px 14px;border-top:1px solid rgba(201,168,76,0.12);background:rgba(255,255,255,0.02);}
+.ai-inp{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(201,168,76,0.18);padding:8px 13px;color:#fff;font-family:'Lato',sans-serif;font-size:0.81rem;border-radius:20px;outline:none;}
+.ai-inp::placeholder{color:rgba(255,255,255,0.3);}
+.ai-inp:focus{border-color:rgba(201,168,76,0.45);}
+.ai-send{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--gold),var(--gold-dark));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.2s;}
+.ai-send:hover{transform:scale(1.1);}
+.ai-send svg{width:15px;height:15px;fill:var(--dark);}
+
+/* ANIMATIONS */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:translateY(0);}}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(8px);}}
+
+/* RESPONSIVE */
+@media(max-width:1024px){.services-grid{grid-template-columns:repeat(2,1fr);}.events-masonry{columns:2;}.why-grid{grid-template-columns:repeat(2,1fr);}.testi-grid{grid-template-columns:1fr 1fr;}.footer-inner{grid-template-columns:1fr 1fr;}.stats{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:768px){nav{padding:0 20px;}.nav-links{display:none;}.services-grid,.testi-grid{grid-template-columns:1fr;}.events-masonry{columns:1;}.why-grid{grid-template-columns:1fr 1fr;}.contact-inner{grid-template-columns:1fr;gap:40px;}.footer-inner{grid-template-columns:1fr 1fr;}.services,.events,.why-us,.testimonials,.contact{padding:80px 24px;}footer{padding:40px 24px 24px;}.ai-panel{width:290px;}}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="lc-l"></div><div class="lc-r"></div>
+  <div class="lparticles" id="lparts"></div>
+  <div class="loader-inner">
+    <img class="loader-logo" src="/mnt/user-data/uploads/image_png.jpeg" alt="Swastik" onerror="this.style.display='none'"/>
+    <div class="loader-brand">SWASTIK</div>
+    <div class="loader-sub">Event &amp; Decorator</div>
+    <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <img src="/mnt/user-data/uploads/image_png.jpeg" alt="Swastik" onerror="this.style.display='none'"/>
+    <div class="nav-logo-text">Swastik<span>Event &amp; Decorator</span></div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#gallery">Gallery</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#testimonials">Reviews</a></li>
+    <li><a href="#contact">Contact</a></li>
+    <li>
+      <a class="nav-wa" href="https://wa.me/919876543210?text=Hi%20Swastik%20Events!%20I%20want%20to%20enquire%20about%20an%20event." target="_blank">
+        <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp
+      </a>
+    </li>
+    <li><a href="#contact" class="nav-cta">Book Now</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div><div class="hero-overlay"></div><div class="hero-pattern"></div>
+  <div class="hero-content">
+    <div class="hero-badge">✦ Crafting Memories Since 2010 ✦</div>
+    <img class="hero-logo" src="/mnt/user-data/uploads/image_png.jpeg" alt="Swastik" onerror="this.style.display='none'"/>
+    <h1>Swastik</h1>
+    <p class="hero-sub">Event &amp; Decorator</p>
+    <div class="hero-divider"><span>✦</span></div>
+    <p>Where every celebration becomes a timeless masterpiece.<br/>Luxury event planning crafted with devotion &amp; artistry.</p>
+    <div class="hero-btns">
+      <a href="#contact" class="btn-primary">Plan Your Event</a>
+      <a href="#gallery" class="btn-outline">View Our Work</a>
+    </div>
+  </div>
+  <div class="hero-scroll"><div class="scroll-line"></div><span>Scroll</span></div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><span class="stat-num">500+</span><span class="stat-label">Events Crafted</span></div>
+  <div class="stat"><span class="stat-num">14+</span><span class="stat-label">Years Experience</span></div>
+  <div class="stat"><span class="stat-num">98%</span><span class="stat-label">Happy Clients</span></div>
+  <div class="stat"><span class="stat-num">50+</span><span class="stat-label">Expert Team</span></div>
+</div>
+
+<!-- SERVICES -->
+<section class="services" id="services">
+  <div class="section-header">
+    <span class="section-tag">✦ What We Offer ✦</span>
+    <h2 class="section-title">Our Premium Services</h2>
+    <div class="section-line"><span>✦</span></div>
+    <p class="section-desc">From intimate gatherings to grand celebrations, we transform every vision into an extraordinary reality.</p>
+  </div>
+  <div class="services-grid">
+    <div class="service-card">
+      <img class="service-img" src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=700&q=80" alt="Weddings"/>
+      <div class="service-overlay"></div>
+      <div class="service-content"><div class="service-icon">💍</div><div class="service-title">Wedding Ceremonies</div><div class="service-desc">Breathtaking mandaps, floral arches, and décor that captures your love story in every detail.</div><span class="service-tag">Weddings</span></div>
+    </div>
+    <div class="service-card">
+      <img class="service-img" src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=700&q=80" alt="Birthdays"/>
+      <div class="service-overlay"></div>
+      <div class="service-content"><div class="service-icon">🎂</div><div class="service-title">Birthday Celebrations</div><div class="service-desc">Themed parties and milestone birthdays decorated to perfection with balloon art and bespoke setups.</div><span class="service-tag">Birthday</span></div>
+    </div>
+    <div class="service-card">
+      <img class="service-img" src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=700&q=80" alt="Corporate"/>
+      <div class="service-overlay"></div>
+      <div class="service-content"><div class="service-icon">🏢</div><div class="service-title">Corporate Events</div><div class="service-desc">Conferences, product launches, and award nights with elegant brand-aligned décor and logistics.</div><span class="service-tag">Corporate</span></div>
+    </div>
+    <div class="service-card">
+      <img class="service-img" src="https://images.unsplash.com/photo-1561488111-5d800fd56b8a?w=700&q=80" alt="Floral"/>
+      <div class="service-overlay"></div>
+      <div class="service-content"><div class="service-icon">🌸</div><div class="service-title">Floral Decoration</div><div class="service-desc">Lush floral installations, centrepieces, and custom flower walls that breathe life into every venue.</div><span class="service-tag">Florals</span></div>
+    </div>
+    <!-- BABY SHOWER — reliable image with multiple fallbacks -->
+    <div class="service-card">
+      <img class="service-img"
+        src="https://images.unsplash.com/photo-1566004100631-35d015d6a491?w=700&q=80"
+        onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1596464716127-f2a82984de30?w=700&q=80';"
+        alt="Baby Shower"/>
+      <div class="service-overlay"></div>
+      <div class="service-content"><div class="service-icon">👶</div><div class="service-title">Baby Showers &amp; Naming</div><div class="service-desc">Adorable themed setups for baby showers, namakaran, and annaprasan ceremonies filled with warmth &amp; joy.</div><span class="service-tag">Baby Events</span></div>
+    </div>
+    <div class="service-card">
+      <img class="service-img" src="https://images.unsplash.com/photo-1478146059778-26028b07395a?w=700&q=80" alt="Pooja"/>
+      <div class="service-overlay"></div>
+      <div class="service-content"><div class="service-icon">🪔</div><div class="service-title">Pooja &amp; Cultural Events</div><div class="service-desc">Traditional décor for griha pravesh, satyanarayan puja, and all sacred celebrations done beautifully.</div><span class="service-tag">Pooja &amp; Culture</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section class="events" id="gallery">
+  <div class="section-header">
+    <span class="section-tag">✦ Our Portfolio ✦</span>
+    <h2 class="section-title">Moments We've Created</h2>
+    <div class="section-line"><span>✦</span></div>
+    <p class="section-desc">A curated showcase of our finest work — each event a unique story told through décor and design.</p>
+  </div>
+  <div class="events-masonry">
+    <div class="event-item"><img src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80" alt="Wedding"/><div class="event-item-overlay"><span class="event-item-label">Grand Wedding — Hyderabad</span></div></div>
+    <div class="event-item"><img src="https://images.unsplash.com/photo-1478146059778-26028b07395a?w=600&h=500&fit=crop&q=80" alt="Festive"/><div class="event-item-overlay"><span class="event-item-label">Diwali Pooja Décor</span></div></div>
+    <div class="event-item">
+      <img src="https://images.unsplash.com/photo-1566004100631-35d015d6a491?w=600&h=500&fit=crop&q=80"
+           onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1596464716127-f2a82984de30?w=600&h=500&fit=crop&q=80';"
+           alt="Baby Shower"/>
+      <div class="event-item-overlay"><span class="event-item-label">Baby Shower — Banjara Hills</span></div>
+    </div>
+    <div class="event-item"><img src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&h=700&fit=crop&q=80" alt="Birthday"/><div class="event-item-overlay"><span class="event-item-label">Royal Birthday Bash</span></div></div>
+    <div class="event-item"><img src="https://images.unsplash.com/photo-1561488111-5d800fd56b8a?w=600&h=450&fit=crop&q=80" alt="Floral"/><div class="event-item-overlay"><span class="event-item-label">Floral Wedding Stage</span></div></div>
+    <div class="event-item"><img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop&q=80" alt="Corporate"/><div class="event-item-overlay"><span class="event-item-label">Corporate Annual Meet</span></div></div>
+    <div class="event-item">
+      <img src="https://images.unsplash.com/photo-1596464716127-f2a82984de30?w=600&h=550&fit=crop&q=80"
+           onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1566004100631-35d015d6a491?w=600&h=550&fit=crop&q=80';"
+           alt="Naming"/>
+      <div class="event-item-overlay"><span class="event-item-label">Namakaran Ceremony</span></div>
+    </div>
+    <div class="event-item"><img src="https://images.unsplash.com/photo-1507504031003-b417219a0fde?w=600&q=80" alt="Engagement"/><div class="event-item-overlay"><span class="event-item-label">Engagement Ceremony</span></div></div>
+    <div class="event-item"><img src="https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=600&h=500&fit=crop&q=80" alt="Sangeet"/><div class="event-item-overlay"><span class="event-item-label">Sangeet Night</span></div></div>
+  </div>
+</section>
+
+<!-- WHY US -->
+<section class="why-us" id="about">
+  <div class="why-us-bg"></div>
+  <div class="section-header" style="position:relative;z-index:1;">
+    <span class="section-tag">✦ Why Choose Us ✦</span>
+    <h2 class="section-title">Where Tradition Meets Trend</h2>
+    <div class="section-line"><span>✦</span></div>
+    <p class="section-desc">We don't just plan events — we craft experiences that stay in hearts for a lifetime.</p>
+  </div>
+  <div class="why-grid" style="position:relative;z-index:1;">
+    <div class="why-card"><span class="why-num">01</span><div class="why-icon">🎯</div><div class="why-title">Personalised Planning</div><div class="why-desc">Every event is uniquely tailored to your vision, preferences, and budget — no cookie-cutter solutions.</div></div>
+    <div class="why-card"><span class="why-num">02</span><div class="why-icon">💎</div><div class="why-title">Premium Décor</div><div class="why-desc">Curated materials, luxury drapes, designer centrepieces, and bespoke floral arrangements.</div></div>
+    <div class="why-card"><span class="why-num">03</span><div class="why-icon">⏱️</div><div class="why-title">On-Time Delivery</div><div class="why-desc">We respect your time. Every setup is completed and perfected before guests arrive — always.</div></div>
+    <div class="why-card"><span class="why-num">04</span><div class="why-icon">🤝</div><div class="why-title">End-to-End Support</div><div class="why-desc">From concept to cleanup — our dedicated team handles every detail so you can enjoy the moment.</div></div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials" id="testimonials">
+  <div class="section-header">
+    <span class="section-tag">✦ Client Stories ✦</span>
+    <h2 class="section-title">What Our Clients Say</h2>
+    <div class="section-line"><span>✦</span></div>
+    <p class="section-desc">The greatest reward is seeing our clients' joy. Here's what they share about their Swastik experience.</p>
+  </div>
+  <div class="testi-grid">
+    <div class="testi-card"><span class="testi-quote">"</span><p class="testi-text">Swastik transformed our wedding into a fairy tale. The mandap decoration was absolutely divine — every guest complimented the stunning arrangements throughout the ceremony.</p><div class="testi-stars">★★★★★</div><div class="testi-author"><div class="testi-avatar">P</div><div><div class="testi-name">Priya &amp; Arjun Sharma</div><div class="testi-event">Wedding Ceremony, Hyderabad</div></div></div></div>
+    <div class="testi-card"><span class="testi-quote">"</span><p class="testi-text">Our company's annual gala was a massive success. The team was professional, punctual, and the décor was beyond our expectations. We'll book them every year!</p><div class="testi-stars">★★★★★</div><div class="testi-author"><div class="testi-avatar">R</div><div><div class="testi-name">Ravi Kondapalli</div><div class="testi-event">Corporate Event, Secunderabad</div></div></div></div>
+    <div class="testi-card"><span class="testi-quote">"</span><p class="testi-text">My daughter's birthday party was a dream. The floral balloon setup and theme decorations were perfect. Kids were thrilled and parents were amazed. Highly recommended!</p><div class="testi-stars">★★★★★</div><div class="testi-author"><div class="testi-avatar">S</div><div><div class="testi-name">Sunitha Reddy</div><div class="testi-event">Birthday Celebration, Banjara Hills</div></div></div></div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div style="position:relative;z-index:1;">
+    <div class="section-header">
+      <span class="section-tag" style="color:var(--gold-light);">✦ Get In Touch ✦</span>
+      <h2 class="section-title">Plan Your Perfect Event</h2>
+      <div class="section-line"><span>✦</span></div>
+      <p class="section-desc">Share your dream with us. We'll craft a celebration that exceeds every expectation.</p>
+    </div>
+    <div class="contact-inner">
+      <div class="contact-info">
+        <h3>Let's Connect</h3>
+        <div class="contact-item">
+          <div class="ci-icon">📍</div>
+          <div class="ci-text"><p>Our Office</p><span>Plot No. 45, Rajendra Nagar,<br/>Hyderabad, Telangana – 500 030</span></div>
+        </div>
+        <div class="contact-item">
+          <div class="ci-icon">📞</div>
+          <div class="ci-text"><p>Call Us</p><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div>
+        </div>
+        <div class="contact-item">
+          <div class="ci-icon">✉️</div>
+          <div class="ci-text"><p>Email Us</p><a href="mailto:hello@swastikevent.com">hello@swastikevent.com</a><a href="mailto:bookings@swastikevent.com">bookings@swastikevent.com</a></div>
+        </div>
+        <div class="contact-item">
+          <div class="ci-icon">🕐</div>
+          <div class="ci-text"><p>Working Hours</p><span>Mon – Sat: 9:00 AM – 8:00 PM<br/>Sunday: 10:00 AM – 6:00 PM</span></div>
+        </div>
+        <div class="contact-item">
+          <div class="ci-icon" style="background:rgba(37,211,102,0.12);border-color:rgba(37,211,102,0.3);">
+            <svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:#25D366;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          </div>
+          <div class="ci-text"><p>WhatsApp</p><a href="https://wa.me/919876543210?text=Hi%20Swastik%20Events!" target="_blank">Chat on WhatsApp →</a></div>
+        </div>
+      </div>
+      <div>
+        <div class="contact-form">
+          <input class="form-field" type="text" placeholder="Your Full Name"/>
+          <input class="form-field" type="tel" placeholder="Phone Number"/>
+          <input class="form-field" type="email" placeholder="Email Address"/>
+          <select class="form-field">
+            <option value="" disabled selected>Select Event Type</option>
+            <option>Wedding Ceremony</option><option>Birthday Celebration</option>
+            <option>Corporate Event</option><option>Pooja / Religious Event</option>
+            <option>Baby Shower / Naming</option><option>Engagement</option><option>Other</option>
+          </select>
+          <input class="form-field" type="date"/>
+          <textarea class="form-field" placeholder="Tell us about your dream event…"></textarea>
+          <button class="form-submit">Send Enquiry ✦</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="/mnt/user-data/uploads/image_png.jpeg" alt="Swastik" onerror="this.style.display='none'"/>
+      <p>Swastik Event &amp; Decorator brings your celebrations to life with artistry, elegance, and devotion. Every event is our masterpiece.</p>
+      <div class="footer-socials">
+        <a class="social-btn" href="#"><svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
+        <a class="social-btn" href="#"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></a>
+        <a class="social-btn wa-social" href="https://wa.me/919876543210" target="_blank"><svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></a>
+        <a class="social-btn" href="#"><svg viewBox="0 0 24 24"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg></a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Services</h4>
+      <ul><li>Wedding Ceremonies</li><li>Birthday Parties</li><li>Corporate Events</li><li>Floral Decoration</li><li>Pooja Events</li><li>Baby Showers</li></ul>
+    </div>
+    <div class="footer-col">
+      <h4>Quick Links</h4>
+      <ul><li>About Us</li><li>Our Portfolio</li><li>Testimonials</li><li>Blog</li><li>Contact Us</li></ul>
+    </div>
+    <div class="footer-col">
+      <h4>Contact</h4>
+      <ul>
+        <li>📍 Rajendra Nagar, Hyd</li>
+        <li>📞 +91 98765 43210</li>
+        <li>📞 +91 91234 56789</li>
+        <li>✉️ hello@swastikevent.com</li>
+        <li>🕐 Mon–Sat 9AM–8PM</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2025 Swastik Event &amp; Decorator. All rights reserved.</p>
+    <div class="footer-bottom-logo">✦ SWASTIK ✦</div>
+  </div>
+</footer>
+
+<!-- WHATSAPP FLOAT -->
+<div class="wa-float">
+  <span class="wa-tip">Chat with us!</span>
+  <a class="wa-float-btn" href="https://wa.me/919876543210?text=Hi%20Swastik%20Events!%20I%20would%20like%20to%20enquire%20about%20your%20event%20planning%20services." target="_blank">
+    <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  </a>
+</div>
+
+<!-- AI ASSISTANT -->
+<div class="ai-float">
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-head">
+      <div class="ai-av">✨</div>
+      <div class="ai-ht"><h4>Swastik Assistant</h4><p>Ask about our events & services</p></div>
+      <div class="ai-dot"></div>
+    </div>
+    <div class="ai-msgs" id="aiMsgs">
+      <div class="ai-m bot">Namaste! 🙏 I'm your Swastik event assistant. Ask me about our services, pricing, booking, or anything else!</div>
+    </div>
+    <div class="ai-qbtns" id="aiQbtns">
+      <button class="ai-q" onclick="sendQ('What services do you offer?')">Services</button>
+      <button class="ai-q" onclick="sendQ('What are your prices?')">Pricing</button>
+      <button class="ai-q" onclick="sendQ('How to book an event?')">Booking</button>
+      <button class="ai-q" onclick="sendQ('Do you do baby showers?')">Baby Shower</button>
+      <button class="ai-q" onclick="sendQ('What areas do you cover?')">Locations</button>
+    </div>
+    <div class="ai-inp-row">
+      <input class="ai-inp" id="aiInp" type="text" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendMsg()"/>
+      <button class="ai-send" onclick="sendMsg()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+    </div>
+  </div>
+  <div class="ai-toggle" id="aiBtn" onclick="toggleAI()">✨</div>
+</div>
+
+<script>
+/* LOADER */
+(function(){
+  const c=document.getElementById('lparts');
+  for(let i=0;i<28;i++){
+    const p=document.createElement('div');p.className='lp';
+    const x=(Math.random()-0.5)*360+'px';
+    p.style.cssText=`left:${Math.random()*100}%;--x:${x};--dur:${3+Math.random()*5}s;--delay:${Math.random()*2.5}s;`;
+    c.appendChild(p);
+  }
+  function hide(){const l=document.getElementById('loader');if(l){l.classList.add('hide');setTimeout(()=>l.remove(),1700);}}
+  window.addEventListener('load',()=>setTimeout(hide,2300));
+  setTimeout(hide,4000);
+})();
+
+/* SMOOTH SCROLL */
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click',e=>{e.preventDefault();const el=document.querySelector(a.getAttribute('href'));if(el)el.scrollIntoView({behavior:'smooth'});});
+});
+
+/* SCROLL REVEAL */
+const obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});},{threshold:0.1});
+document.querySelectorAll('.service-card,.event-item,.why-card,.testi-card,.stat').forEach(el=>{
+  el.style.opacity='0';el.style.transform='translateY(28px)';el.style.transition='opacity 0.7s ease,transform 0.7s ease';obs.observe(el);
+});
+
+/* AI CHAT */
+let aiOpen=false;
+function toggleAI(){
+  aiOpen=!aiOpen;
+  document.getElementById('aiPanel').classList.toggle('open',aiOpen);
+  document.getElementById('aiBtn').textContent=aiOpen?'✕':'✨';
+}
+function addMsg(t,r){
+  const box=document.getElementById('aiMsgs');
+  const d=document.createElement('div');d.className='ai-m '+r;d.textContent=t;
+  box.appendChild(d);box.scrollTop=box.scrollHeight;
+}
+function showTyping(){
+  const box=document.getElementById('aiMsgs');
+  const d=document.createElement('div');d.className='ai-typing-d';d.id='aiTyping';
+  d.innerHTML='<span></span><span></span><span></span>';
+  box.appendChild(d);box.scrollTop=box.scrollHeight;
+}
+function hideTyping(){const t=document.getElementById('aiTyping');if(t)t.remove();}
+
+function reply(q){
+  q=q.toLowerCase();
+  if(/hi|hello|hey|namaste/.test(q))return"Namaste! 🙏 Welcome to Swastik Event & Decorator. How can I help you plan the perfect celebration?";
+  if(/service|offer|provide|what do/.test(q))return"We offer:\n💍 Weddings & Engagement\n🎂 Birthday Celebrations\n🏢 Corporate Events\n🌸 Floral Decoration\n👶 Baby Showers & Naming\n🪔 Pooja & Cultural Events\n\nWhich would you like to know more about?";
+  if(/baby|shower|naming|namakaran|annaprasan/.test(q))return"We specialise in adorable Baby Shower & Naming Ceremony setups! 👶\n\n✦ Themed balloon décor\n✦ Floral backdrops & arches\n✦ Welcome gates\n✦ Cake table arrangements\n✦ Photo booth setups\n\nPackages start from ₹15,000. Call +91 98765 43210 for a free quote!";
+  if(/price|cost|budget|rate|package|how much/.test(q))return"Our packages:\n👶 Baby Showers: from ₹15,000\n🎂 Birthdays: from ₹20,000\n💍 Weddings: from ₹1,00,000\n🏢 Corporate: from ₹50,000\n🪔 Pooja Events: from ₹8,000\n\nAll packages are customised. Contact us for a free quote!";
+  if(/book|appointment|consult|enquir/.test(q))return"Book in 3 easy ways:\n\n1️⃣ Fill the contact form on this page\n2️⃣ Call: +91 98765 43210\n3️⃣ WhatsApp us directly!\n\nWe respond within 2 hours. Shall I open WhatsApp for you?";
+  if(/wedding|shaadi|marriage|mandap/.test(q))return"Our weddings are truly spectacular! 💍\n\n✦ Grand mandap setups\n✦ Floral arches & stage décor\n✦ Entrance gates\n✦ Centrepieces & lighting\n✦ Complete venue transformation\n\n200+ weddings delivered in Hyderabad. From ₹1,00,000.";
+  if(/birthday|bday|anniversary/.test(q))return"Birthday celebrations done right! 🎂\n\n✦ Balloon arches & columns\n✦ Themed photo backdrops\n✦ Cake table setups\n✦ Entrance decorations\n✦ Kids & adults both!\n\nStarting ₹20,000. All themes available!";
+  if(/corporate|conference|launch|award/.test(q))return"Professional corporate event management! 🏢\n\n✦ Conference & seminar setups\n✦ Product launch décor\n✦ Award night staging\n✦ Branding & AV support\n✦ Gala dinner arrangements\n\nStarting ₹50,000.";
+  if(/area|location|where|hyderabad|city|cover/.test(q))return"We serve:\n📍 Hyderabad (all areas)\n📍 Secunderabad\n📍 Banjara Hills & Jubilee Hills\n📍 Kondapur & Gachibowli\n📍 Warangal\n📍 Vijayawada\n\nOutstation available for large events!";
+  if(/whatsapp|chat|message/.test(q))return"Sure! Tap this to chat directly:\nhttps://wa.me/919876543210?text=Hi%20Swastik%20Events!\n\nOr call: +91 98765 43210";
+  if(/photo|gallery|portfolio|work/.test(q))return"You can see our stunning portfolio in the Gallery section above! 📸\n\nWe've delivered 500+ events. Check our Instagram for the latest setups and real client photos!";
+  if(/pooja|puja|griha|housewarming/.test(q))return"Beautiful traditional setups for:\n🪔 Griha Pravesh\n🪔 Satyanarayan Puja\n🪔 Ganesh Chaturthi\n🪔 Diwali Celebrations\n🪔 Namakaran & Annaprasan\n\nAuthentic flowers, rangoli, and traditional décor. From ₹8,000!";
+  if(/thank/.test(q))return"You're most welcome! 😊 Wishing you a beautiful celebration. For bookings: +91 98765 43210 or WhatsApp us anytime!";
+  return"Great question! Our team would love to help you personally.\n\n📞 Call: +91 98765 43210\n📞 Call: +91 91234 56789\n💬 WhatsApp available\n✉️ hello@swastikevent.com\n🕐 Mon–Sat 9AM–8PM\n\nIs there anything else I can help with?";
+}
+
+async function sendMsg(){
+  const inp=document.getElementById('aiInp');
+  const t=inp.value.trim();if(!t)return;
+  inp.value='';
+  addMsg(t,'usr');
+  document.getElementById('aiQbtns').style.display='none';
+  showTyping();
+  await new Promise(r=>setTimeout(r,800+Math.random()*700));
+  hideTyping();
+  addMsg(reply(t),'bot');
+}
+function sendQ(q){document.getElementById('aiInp').value=q;sendMsg();}
+</script>
+</body>
+</html>
